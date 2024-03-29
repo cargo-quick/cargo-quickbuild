@@ -9,12 +9,12 @@ fi
 
 cargo install --locked --path $HOME/src/cargo-quick/cargo-quickbuild
 
-# for crate in syn git-delta gitoxide probe-rs-cli pueue watchexec-cli xh ; do 
+# for crate in syn git-delta gitoxide probe-rs-cli pueue watchexec-cli xh ; do
 #     if ! [ -d  ~/tmp/$crate ] ; then
 #         cargo clone $crate -- ~/tmp/$crate
 #     fi
 #     \in ~/tmp/$crate time cargo quickbuild build || echo "failed"
-#     # \in ~/tmp/$crate cargo tree --edges=all --invert syn 
+#     # \in ~/tmp/$crate cargo tree --edges=all --invert syn
 # done
 
 cargo quickbuild repo find target/debug/.fingerprint/syn-0d23c7d14ae11633/lib-syn.json
@@ -63,30 +63,30 @@ cargo quickbuild repo find target/debug/.fingerprint/syn-0d23c7d14ae11633/lib-sy
     # * syn has "extra-traits", "full" as features
     # * a bunch of versions change
     # * unicode-ident is replaced with unicode-xid
-    # * 
+    # *
     echo '
 [build-dependencies]
 syn_1_0_94 = { package = "syn", version = "=1.0.94", features = ["extra-traits"], default-features = false }
-' >> ~/tmp/syn-minimal-repro/Cargo.toml
+    ' >> ~/tmp/syn-minimal-repro/Cargo.toml
     \in ~/tmp/syn-minimal-repro/ cargo tree --edges=all
-
+    
     # for package in thiserror-impl serde_derive; do
-        rm -rf ~/tmp/syn-minimal-repro/target/
-        # rm -rf ~/tmp/quick/*.tar
-        # rm -rf ~/tmp/quick/*.stdout
-        # rm -rf ~/tmp/quick/*.stderr
-        # rm -rf ~/tmp/quick/$package*.tar
-        rm -rf ~/tmp/quick/
-        # rm -f ~/tmp/$package.log
-
-        # Last one wins. Rearrange lines rather than commenting them out.
-        CARGO_LOG=cargo::core::compiler::fingerprint=trace \
-        CARGO_LOG=cargo::core::compiler::unit_dependencies=warn,cargo::core::compiler::job_queue=warn,cargo=trace \
-        CARGO_LOG=cargo::util::rustc=debug \
-        RUST_LOG=cargo_quickbuild::archive=warn,cargo_quickbuild=debug \
-            cargo quickbuild build # || true # 2>&1 | sed 's/^[[]2022[^ ]*//' > ~/tmp/$package.log || true
+    rm -rf ~/tmp/syn-minimal-repro/target/
+    # rm -rf ~/tmp/quick/*.tar
+    # rm -rf ~/tmp/quick/*.stdout
+    # rm -rf ~/tmp/quick/*.stderr
+    # rm -rf ~/tmp/quick/$package*.tar
+    rm -rf ~/tmp/quick/
+    # rm -f ~/tmp/$package.log
+    
+    # Last one wins. Rearrange lines rather than commenting them out.
+    # CARGO_LOG=cargo::core::compiler::fingerprint=trace \
+    # CARGO_LOG=cargo::core::compiler::unit_dependencies=warn,cargo::core::compiler::job_queue=warn,cargo=trace \
+    CARGO_LOG=cargo::util::rustc=debug \
+    RUST_LOG=cargo_quickbuild::archive=warn,cargo_quickbuild=debug \
+    cargo quickbuild build # || true # 2>&1 | sed 's/^[[]2022[^ ]*//' > ~/tmp/$package.log || true
     # done
-
+    
     sed -i '' 's/^[[]2022[^ ]*//' ~/tmp/quick/*.stderr
     # code --diff ~/tmp/quick/syn-1*.stderr ~/tmp/quick/serde_derive-1*.stderr
     # code --diff ~/tmp/quick/serde_derive-1*.stderr ~/tmp/quick/cargo-build.stderr
