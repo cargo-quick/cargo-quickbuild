@@ -2,3 +2,4 @@
 .DS_Store
 notes.md
 flamegraph*.svg
+/tmp
