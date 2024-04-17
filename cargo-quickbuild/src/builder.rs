@@ -38,11 +38,19 @@ pub fn build_tarball<'cfg, 'a>(
     cargo_init(&scratch_dir)?;
     stats.init_done();
 
+    let description = PackageDescription::new(resolve, package_id, build_for);
+
     let file_timestamps =
-        unpack_tarballs_of_deps(resolve, repo, package_id, build_for, &scratch_dir)?;
+        unpack_tarballs_of_deps(resolve, repo, package_id, build_for, &scratch_dir).with_context(
+            || {
+                format!(
+                    "problem with package deps:\n{}",
+                    description.cargo_toml_deps()
+                )
+            },
+        )?;
     stats.untar_done();
 
-    let description = PackageDescription::new(resolve, package_id, build_for);
     overwrite_manifest(&scratch_dir, &description)?;
 
     run_cargo_build(
@@ -54,7 +62,8 @@ pub fn build_tarball<'cfg, 'a>(
 
     let description = PackageDescription::new(resolve, package_id, build_for);
     let file = repo.write(&description)?;
-    tar_target_dir(scratch_dir, file, &file_timestamps)?;
+    tar_target_dir(scratch_dir, file, &file_timestamps)
+        .with_context(|| format!("problem with package:\n{}", description.cargo_toml_deps()))?;
     stats.tar_done();
 
     repo.commit(&description, stats)?;
