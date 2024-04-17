@@ -5,6 +5,7 @@ members = [
     "cargo-quick",
     "cargo-quickbuild",
 ]
+resolver = "1"
 
 [profile.release]
 debug = true

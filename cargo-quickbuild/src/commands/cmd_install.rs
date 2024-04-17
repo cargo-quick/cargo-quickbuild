@@ -76,12 +76,12 @@ pub fn exec(args: &[String]) -> anyhow::Result<()> {
         )?;
     }
 
-    // FIXME: this doesn't end up building with the same profile as `run_cargo_build()`, so it
-    // duplicates all of the work.
+    println!("We managed to build all of {krate}'s dependencies without duplicating work.");
+
     command([
         "cargo",
         "install",
-        "--offline",
+        // TODO: pre-fetch everything and add "--offline" here?
         "--debug",
         "--force",
         "--target-dir",
@@ -89,6 +89,10 @@ pub fn exec(args: &[String]) -> anyhow::Result<()> {
         krate,
     ])
     .try_execute()?;
+
+    println!(
+        "TODO: check that it avoided duplicating work (you should only see 'Compiling' step above)"
+    );
 
     Ok(())
 }
