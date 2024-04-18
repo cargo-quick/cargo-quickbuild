@@ -9,6 +9,8 @@ rm -rf ~/tmp/quick/
 cd ~/tmp
 cargo new depends-on-curl-sys
 
+
+# This is what cargo-quickbuild uses as its Cargo.toml when trying to build curl-sys
 cat << EOF > ~/tmp/depends-on-curl-sys/Cargo.toml
 # curl-sys 0.4.59+curl-7.86.0
 [package]
@@ -23,6 +25,10 @@ curl-sys_0_4_59_curl_7_86_0 = { package = "curl-sys", version = "=0.4.59+curl-7.
 libc_0_2_132 = { package = "libc", version = "=0.2.132", features = ["default", "std"], default-features = false }
 libnghttp2-sys_0_1_7_1_45_0 = { package = "libnghttp2-sys", version = "=0.1.7+1.45.0", features = [], default-features = false }
 libz-sys_1_1_6 = { package = "libz-sys", version = "=1.1.6", features = ["libc"], default-features = false }
+
+[build-dependencies]
+cc_1_0_94 = { package = "cc", version = "=1.0.94", features = [], default-features = false }
+pkg-config_0_3_30 = { package = "pkg-config", version = "=0.3.30", features = [], default-features = false }
 
 EOF
 

@@ -4,8 +4,10 @@ use std::task::Poll;
 use anyhow::bail;
 use cargo::core::compiler::{CompileMode, UnitInterner};
 use cargo::core::resolver::features::FeaturesFor;
-use cargo::core::{Dependency, Package, PackageId, QueryKind, Source, SourceId, Workspace};
+use cargo::core::{Dependency, Package, PackageId, SourceId, Workspace};
 use cargo::ops::CompileOptions;
+use cargo::sources::source::QueryKind;
+use cargo::sources::source::Source;
 use cargo::sources::SourceConfigMap;
 use cargo::util::Filesystem;
 use cargo::{CargoResult, Config};
@@ -111,7 +113,8 @@ where
     // This operation may involve updating some sources or making a few queries
     // which may involve frobbing caches, as a result make sure we synchronize
     // with other global Cargos
-    let _lock = config.acquire_package_cache_lock()?;
+    let _lock = config
+        .acquire_package_cache_lock(cargo::util::cache_lock::CacheLockMode::DownloadExclusive)?;
 
     if needs_update {
         source.invalidate_cache();
