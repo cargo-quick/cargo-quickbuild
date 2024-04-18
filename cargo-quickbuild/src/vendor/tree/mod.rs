@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 pub mod graph;
 
-pub use {graph::EdgeKind, graph::Node};
+pub use graph::EdgeKind;
 
 pub struct TreeOptions {
     pub cli_features: CliFeatures,
@@ -48,7 +48,7 @@ pub struct TreeOptions {
 pub enum Target {
     Host,
     // Specific(Vec<String>),
-    All,
+    // All,
 }
 
 pub enum Charset {

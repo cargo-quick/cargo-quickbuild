@@ -25,7 +25,6 @@ pub fn create_resolve<'a, 'cfg>(
         target_rustdoc_args: _,
         target_rustc_args: _,
         target_rustc_crate_types: _,
-        local_rustdoc_args: _,
         rustdoc_document_private_items: _,
         honor_rust_version: _,
     } = *options;
@@ -54,11 +53,11 @@ pub fn create_resolve<'a, 'cfg>(
     }
     config.validate_term_config()?;
 
-    let target_data = RustcTargetData::new(ws, &build_config.requested_kinds)?;
+    let mut target_data = RustcTargetData::new(ws, &build_config.requested_kinds)?;
 
     let all_packages = &Packages::All;
-    let rustdoc_scrape_examples = &config.cli_unstable().rustdoc_scrape_examples;
-    let need_reverse_dependencies = rustdoc_scrape_examples.is_some();
+    let rustdoc_scrape_examples = config.cli_unstable().rustdoc_scrape_examples;
+    let need_reverse_dependencies = rustdoc_scrape_examples;
     let full_specs = if need_reverse_dependencies {
         all_packages
     } else {
@@ -73,12 +72,13 @@ pub fn create_resolve<'a, 'cfg>(
     };
     let resolve = ops::resolve_ws_with_opts(
         ws,
-        &target_data,
+        &mut target_data,
         &build_config.requested_kinds,
         cli_features,
         &resolve_specs,
         has_dev_units,
         ForceAllTargets::No,
+        None,
     )?;
 
     Ok(resolve)

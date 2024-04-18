@@ -147,7 +147,7 @@ pub fn tracked_unpack<R: Read>(
                         (mtime != on_disk_mtime. now = {now})\n\
                         {contents_differ_message}",
                     );
-                    eprintln!("{problem}");
+                    // eprintln!("{problem}");
                 }
             }
             file.unpack_in(dst)?;

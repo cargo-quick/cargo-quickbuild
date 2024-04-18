@@ -15,7 +15,7 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 anyhow = "1.0.57"
-cargo = { version = "0.61.1" }
+cargo = "0.76"
 chrono = "0.4.22"
 crypto-hash = "0.3.4"
 filetime = "0.2.16"
@@ -28,3 +28,7 @@ serde_json = "1.0.81"
 tar = "0.4.38"
 tempdir = "0.3.7"
 walkdir = "2.3.2"
+
+# [dev-dependencies]
+# cargo-test-support = { path = "../../cargo/crates/cargo-test-support/" }
+# cargo-test-macro = { path = "../../cargo/crates/cargo-test-macro/" }

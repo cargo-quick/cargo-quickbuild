@@ -1,10 +1,13 @@
 use std::collections::HashSet;
+use std::task::Poll;
 
 use anyhow::bail;
 use cargo::core::compiler::{CompileMode, UnitInterner};
 use cargo::core::resolver::features::FeaturesFor;
-use cargo::core::{Dependency, Package, PackageId, Source, SourceId, Workspace};
+use cargo::core::{Dependency, Package, PackageId, SourceId, Workspace};
 use cargo::ops::CompileOptions;
+use cargo::sources::source::QueryKind;
+use cargo::sources::source::Source;
 use cargo::sources::SourceConfigMap;
 use cargo::util::Filesystem;
 use cargo::{CargoResult, Config};
@@ -61,7 +64,7 @@ pub fn exec(args: &[String]) -> anyhow::Result<()> {
 
         let interner = UnitInterner::new();
         let workspace_resolve = create_resolve(&ws, &options, &interner)?;
-        let resolve = create_quick_resolve(&ws, &options, &workspace_resolve)?;
+        let resolve = create_quick_resolve(&ws, &options, &workspace_resolve, &interner)?;
 
         let repo = Repo::from_env();
         build_missing_packages(&resolve, &repo, package.package_id())?;
@@ -75,12 +78,12 @@ pub fn exec(args: &[String]) -> anyhow::Result<()> {
         )?;
     }
 
-    // FIXME: this doesn't end up building with the same profile as `run_cargo_build()`, so it
-    // duplicates all of the work.
+    println!("We managed to build all of {krate}'s dependencies without duplicating work.");
+
     command([
         "cargo",
         "install",
-        "--offline",
+        // TODO: pre-fetch everything and add "--offline" here?
         "--debug",
         "--force",
         "--target-dir",
@@ -88,6 +91,10 @@ pub fn exec(args: &[String]) -> anyhow::Result<()> {
         krate,
     ])
     .try_execute()?;
+
+    println!(
+        "TODO: check that it avoided duplicating work (you should only see 'Compiling' step above)"
+    );
 
     Ok(())
 }
@@ -106,13 +113,19 @@ where
     // This operation may involve updating some sources or making a few queries
     // which may involve frobbing caches, as a result make sure we synchronize
     // with other global Cargos
-    let _lock = config.acquire_package_cache_lock()?;
+    let _lock = config
+        .acquire_package_cache_lock(cargo::util::cache_lock::CacheLockMode::DownloadExclusive)?;
 
     if needs_update {
-        source.update()?;
+        source.invalidate_cache();
     }
 
-    let deps = source.query_vec(&dep)?;
+    let deps = loop {
+        match source.query_vec(&dep, QueryKind::Exact)? {
+            Poll::Ready(deps) => break deps,
+            Poll::Pending => source.block_until_ready()?,
+        }
+    };
     match deps.iter().map(|p| p.package_id()).max() {
         Some(pkgid) => {
             let pkg = Box::new(source).download_now(pkgid, config)?;
@@ -121,8 +134,20 @@ where
         None => {
             let is_yanked: bool = if dep.version_req().is_exact() {
                 let version: String = dep.version_req().to_string();
-                PackageId::new(dep.package_name(), &version[1..], source.source_id())
-                    .map_or(false, |pkg_id| source.is_yanked(pkg_id).unwrap_or(false))
+                if let Ok(pkg_id) =
+                    PackageId::new(dep.package_name(), &version[1..], source.source_id())
+                {
+                    source.invalidate_cache();
+                    loop {
+                        match source.is_yanked(pkg_id) {
+                            Poll::Ready(Ok(is_yanked)) => break is_yanked,
+                            Poll::Ready(Err(_)) => break false,
+                            Poll::Pending => source.block_until_ready()?,
+                        }
+                    }
+                } else {
+                    false
+                }
             } else {
                 false
             };

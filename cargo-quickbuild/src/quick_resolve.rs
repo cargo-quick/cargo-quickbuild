@@ -3,12 +3,13 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 use anyhow::Result;
-use cargo::core::compiler::RustcTargetData;
 
+use cargo::core::compiler::UnitInterner;
 use cargo::core::dependency::DepKind;
 use cargo::core::resolver::features::FeaturesFor;
 use cargo::core::Package;
 use cargo::core::{PackageId, Workspace};
+use cargo::ops::create_bcx;
 use cargo::ops::WorkspaceResolve;
 use cargo::ops::{CompileOptions, Packages};
 
@@ -32,6 +33,8 @@ impl PartialOrd for BuildFor {
             (FeaturesFor::NormalOrDev, FeaturesFor::NormalOrDev) => Ordering::Equal,
             (FeaturesFor::NormalOrDev, FeaturesFor::HostDep) => Ordering::Less,
             (FeaturesFor::HostDep, FeaturesFor::NormalOrDev) => Ordering::Greater,
+            (FeaturesFor::ArtifactDep(_), _) => todo!(),
+            (_, FeaturesFor::ArtifactDep(_)) => todo!(),
         })
     }
 }
@@ -49,7 +52,7 @@ where
 {
     pub ws: &'a Workspace<'cfg>,
     pub workspace_resolve: &'a WorkspaceResolve<'cfg>,
-    pub graph: Graph<'a>,
+    graph: Graph<'a>,
 }
 
 impl<'cfg, 'a> QuickResolve<'cfg, 'a> {
@@ -108,6 +111,7 @@ impl<'cfg, 'a> QuickResolve<'cfg, 'a> {
                                 }
                                 // once a HostDep, always a HostDep
                                 (FeaturesFor::HostDep, _) => BuildFor(FeaturesFor::HostDep),
+                                (FeaturesFor::ArtifactDep(_), _) => todo!(),
                             };
                             layer.insert((package_id, new_build_for));
                         }
@@ -138,11 +142,10 @@ impl<'cfg, 'a> QuickResolve<'cfg, 'a> {
 
 pub fn create_quick_resolve<'cfg, 'a>(
     ws: &'a Workspace<'cfg>,
-    options: &CompileOptions,
+    options: &'a CompileOptions,
     workspace_resolve: &'a cargo::ops::WorkspaceResolve<'cfg>,
+    interner: &'a UnitInterner,
 ) -> Result<QuickResolve<'cfg, 'a>, anyhow::Error> {
-    let requested_kinds = &options.build_config.requested_kinds;
-    let target_data = RustcTargetData::new(ws, requested_kinds)?;
     let package_map: HashMap<PackageId, &Package> = workspace_resolve
         .pkg_set
         .packages()
@@ -170,18 +173,17 @@ pub fn create_quick_resolve<'cfg, 'a>(
         max_display_depth: Default::default(),
         no_proc_macro: Default::default(),
     };
-    let graph = crate::vendor::tree::graph::build(
-        ws,
+
+    let bcx = create_bcx(ws, &options, &interner)?;
+
+    let graph = crate::vendor::tree::graph::from_bcx(
+        bcx,
         &workspace_resolve.targeted_resolve,
-        &workspace_resolve.resolved_features,
         &options.spec.to_package_id_specs(ws)?,
-        &options.cli_features,
-        &target_data,
-        requested_kinds,
+        &opts.cli_features,
         package_map,
         &opts,
-    )
-    .unwrap();
+    )?;
     let resolve = QuickResolve {
         ws,
         workspace_resolve,
@@ -204,7 +206,7 @@ mod tests {
     use std::collections::HashMap;
     use std::path::Path;
 
-    use cargo::core::compiler::{RustcTargetData, UnitInterner};
+    use cargo::core::compiler::UnitInterner;
     use cargo::core::Package;
     use cargo::util::command_prelude::CompileMode;
     use cargo::util::interning::InternedString;
@@ -225,8 +227,6 @@ mod tests {
 
         let interner = UnitInterner::new();
         let workspace_resolve = create_resolve(&ws, &options, &interner)?;
-        let requested_kinds = &options.build_config.requested_kinds;
-        let target_data = RustcTargetData::new(&ws, requested_kinds)?;
         let package_map: HashMap<PackageId, &Package> = workspace_resolve
             .pkg_set
             .packages()
@@ -254,18 +254,16 @@ mod tests {
             max_display_depth: Default::default(),
             no_proc_macro: Default::default(),
         };
-        let graph = crate::vendor::tree::graph::build(
-            &ws,
+        let bcx = create_bcx(&ws, &options, &interner)?;
+
+        let graph = crate::vendor::tree::graph::from_bcx(
+            bcx,
             &workspace_resolve.targeted_resolve,
-            &workspace_resolve.resolved_features,
             &options.spec.to_package_id_specs(&ws)?,
-            &options.cli_features,
-            &target_data,
-            requested_kinds,
+            &opts.cli_features,
             package_map,
             &opts,
-        )
-        .unwrap();
+        )?;
         let resolve = QuickResolve {
             ws: &ws,
             workspace_resolve: &workspace_resolve,

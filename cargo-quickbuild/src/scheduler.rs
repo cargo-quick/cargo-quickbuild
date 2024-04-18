@@ -37,7 +37,7 @@ pub fn build_missing_packages(
                     outstanding_deps(resolve, &built_packages, *package_id, *build_for).is_empty()
                 });
 
-        dbg!(&current_level);
+        // dbg!(&current_level);
 
         if current_level.is_empty() && !packages_to_build.is_empty() {
             println!(
@@ -92,8 +92,8 @@ pub fn build_tarball_if_not_exists<'cfg, 'a>(
     let package_digest = description.pretty_digest();
 
     if repo.has(&description) {
-        let cargo_toml_deps = description.cargo_toml_deps();
-        println!("{package_digest:?} already exists (\n```\n{cargo_toml_deps}\n```\n)");
+        // let cargo_toml_deps = description.cargo_toml_deps();
+        // println!("{package_digest:?} already exists (\n```\n{cargo_toml_deps}\n```\n)");
         return Ok(());
     }
     println!("STARTING BUILD\n{package_digest:?}");
